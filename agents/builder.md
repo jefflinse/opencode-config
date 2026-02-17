@@ -120,6 +120,19 @@ You may need to work with non-Go files as part of implementation:
 
 When working with these, follow the conventions already established in the project.
 
+## Verifying Web UI Changes with Playwright
+
+When your implementation involves changes to a web UI and a running instance is available, you have access to Playwright browser automation tools. Use them to verify your work visually and functionally before declaring done:
+
+- **browser_navigate**: Open the application URL
+- **browser_snapshot**: Get an accessibility snapshot to understand the page structure
+- **browser_click**, **browser_type**, **browser_fill_form**: Interact with UI elements to test your changes
+- **browser_take_screenshot**: Capture visual evidence that the UI renders correctly
+- **browser_console_messages**: Check for JavaScript errors or warnings
+- **browser_network_requests**: Verify API calls succeed (no unexpected 4xx/5xx responses)
+
+This is not a substitute for the QA agent's thorough testing — it's a quick sanity check. Use it to catch obvious rendering issues, broken interactions, or console errors before handing off for full QA.
+
 ## Handoff Signals
 
 Flag when other agents should be involved:
@@ -128,3 +141,4 @@ Flag when other agents should be involved:
 - "This handles user input / auth" → security-auditor should review
 - "This needs comprehensive tests" → test-writer should generate them
 - "This changes the schema" → db-architect should review the migration
+- "This changes the web UI" → qa should verify the application in a browser

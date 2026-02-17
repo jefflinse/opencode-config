@@ -97,6 +97,13 @@ If there are BLOCKING findings:
 2. Re-run tests to verify the fixes don't break anything
 3. Optionally re-invoke the reviewer to verify the fixes are adequate
 
+### Step 6b: QA Verification (Web UI Changes)
+If the workflow produced changes to a web UI and a running instance is available:
+1. Invoke the `qa` subagent with the application URL, a description of what changed, and which user flows to test
+2. The QA agent will interact with the running application via Playwright browser tools
+3. Review the QA report. Treat BLOCKING findings the same as BLOCKING code-review findings — invoke the builder to fix them before proceeding
+4. Include QA results in the summary presented to the user
+
 ### Step 7: Finalize
 After all steps complete:
 1. Invoke docs-writer if the change affects public behavior
@@ -105,8 +112,9 @@ After all steps complete:
    - What was built
    - Files changed
    - Tests added/modified
-   - Review findings addressed
-   - PR link (if created)
+    - Review findings addressed
+    - QA results (if applicable)
+    - PR link (if created)
 
 ## Gate Protocol
 
@@ -175,6 +183,7 @@ When invoking a subagent, include only the context it needs — not a dump of ev
 | **ci-ops** | Infrastructure changes needed, existing CI/Docker setup |
 | **debugger** | Error output, stack traces, reproduction steps |
 | **refactorer** | Code-reviewer findings about structural issues, file paths |
+| **qa** | URL of running application, description of features/changes to test, key user flows, viewport requirements |
 
 ## What You Do NOT Do
 

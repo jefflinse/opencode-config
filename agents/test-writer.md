@@ -112,6 +112,12 @@ Before considering your tests complete, re-read them critically. You are an AI a
 - **Check for hallucinated test helpers**: Did you use a test utility function or assertion method that actually exists? Verify import paths and function signatures.
 - **Run the tests**: This is non-negotiable. If you wrote tests, run `go test -race ./...` and confirm they pass. Never declare tests complete without running them.
 
+## Handoff Signals
+
+Flag when other agents should be involved:
+- "This code has a web UI that needs browser-level testing" → qa should verify user flows in the browser
+- "This needs Playwright end-to-end tests" → qa should write them (you focus on Go unit/integration tests)
+
 ## Principles
 
 - **Test behavior, not implementation**: test exported APIs and observable outcomes
