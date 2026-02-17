@@ -11,15 +11,25 @@ Guides scaffolding a new Go project with a production-ready structure. Covers di
 
 Use this when starting a new Go project or service from scratch. Do not use this to restructure an existing project — use the refactorer agent for that.
 
-## Pre-Scaffold Checklist
+## Workflow
 
-Before creating any files:
-1. Confirm the Go module path (e.g., `github.com/org/project`)
-2. Confirm the project type: CLI tool, HTTP service, gRPC service, or library
-3. Confirm the minimum Go version
-4. Check if the organization has existing projects to match conventions from
+### Phase 1: Gather Requirements
+**Agent**: planner
 
-## Directory Layout
+Collect the information needed to scaffold correctly:
+1. Go module path (e.g., `github.com/org/project`)
+2. Project type: CLI tool, HTTP service, gRPC service, or library
+3. Minimum Go version
+4. Whether the organization has existing projects with conventions to match
+5. Required infrastructure: database, cache, message queue, etc.
+6. CI platform: GitHub Actions, GitLab CI, or other
+
+**Gate**: Requirements must be confirmed by the user before scaffolding begins. Use the question tool to collect any missing information.
+
+### Phase 2: Scaffold Project Structure
+**Agent**: builder
+
+Create the directory layout and core files based on the requirements from Phase 1:
 
 ```
 .
@@ -34,32 +44,77 @@ Before creating any files:
 ├── migrations/                # SQL migration files (if applicable)
 ├── api/                       # OpenAPI specs, .proto files (if applicable)
 ├── scripts/                   # Build and dev helper scripts
-├── Dockerfile
-├── Makefile
-├── docker-compose.yml         # Local development dependencies
-├── .golangci.yml
 ├── .gitignore
 ├── .env.example
-├── README.md
 └── go.mod
 ```
 
-### Layout Decisions
-- Use `internal/` by default — only move to `pkg/` if code is explicitly meant for external import
+Layout decisions:
+- Use `internal/` by default — only create `pkg/` if code is explicitly meant for external import
 - One `cmd/<name>/main.go` per binary — keep main.go thin (parse config, wire deps, start server)
 - Group by domain, not by technical layer (prefer `internal/user/` over `internal/handlers/`, `internal/models/`)
 
-## go.mod
+Acceptance criteria: `go build ./...` compiles, `go vet ./...` passes.
 
-```
-go mod init <module-path>
-```
-- Set the Go version to the project's minimum supported version
-- Do not add dependencies until they are actually needed
+### Phase 3: Build Tooling
+**Agent**: ci-ops
 
-## Makefile
+Create build and development tooling:
 
-Provide these standard targets:
+1. **Makefile** with standard targets: `build`, `test`, `lint`, `run`, `clean`, `docker-build`, `help`
+2. **Dockerfile** using multi-stage build (research current Go and distroless image tags before writing)
+3. **docker-compose.yml** for local development dependencies (database, cache, etc.)
+4. **.golangci.yml** with a minimal, opinionated linter configuration
+
+**Important**: Research current versions of Go base images, distroless images, and golangci-lint configuration format before writing these files. Do not use versions from memory.
+
+Acceptance criteria: `make help` lists all targets, `make build` succeeds, `docker build .` succeeds.
+
+### Phase 4: CI Pipeline
+**Agent**: ci-ops
+
+Create the CI pipeline for the project's CI platform:
+
+1. **GitHub Actions** workflow (`.github/workflows/ci.yml`) with:
+   - Test job: `go test -race ./...`
+   - Lint job: `golangci-lint run`
+   - Pin all action versions to specific SHAs
+   - Use `go-version-file: go.mod` for Go version
+
+**Important**: Research current SHA-pinned versions of all GitHub Actions before writing the workflow. Do not use versions from memory.
+
+Acceptance criteria: Workflow YAML is valid syntax, references valid action SHAs.
+
+### Phase 5: Documentation
+**Agent**: docs-writer
+
+Create initial project documentation:
+
+1. **README.md** with:
+   - One-line project description
+   - Installation/setup instructions
+   - Quick-start example
+   - Development setup (prerequisites, `make` targets)
+   - Configuration options
+
+Acceptance criteria: README accurately reflects the scaffolded project structure.
+
+### Phase 6: Review
+**Agent**: code-reviewer
+
+Review the complete scaffold for:
+1. Consistency between all generated files (Makefile targets match Dockerfile stages, CI matches Makefile)
+2. No hardcoded secrets, placeholder values left in committed files
+3. All files follow the conventions established in Phase 1
+4. `go build ./...`, `go vet ./...`, `go test ./...` all pass
+
+**Gate**: Present the review findings to the user. The scaffold should be clean before the user starts building on it.
+
+## Reference: File Templates
+
+The following sections provide templates for the builder and ci-ops agents. These are reference material — agents should adapt them to the specific project requirements, not copy them verbatim.
+
+### Makefile Template
 ```makefile
 .PHONY: build test lint run clean docker-build help
 
@@ -89,9 +144,7 @@ docker-build: ## Build Docker image
 	docker build -t $(BINARY):$(VERSION) .
 ```
 
-## Dockerfile
-
-Use multi-stage build:
+### Dockerfile Template
 ```dockerfile
 FROM golang:<version>-alpine AS builder
 WORKDIR /app
@@ -105,45 +158,7 @@ COPY --from=builder /app/server /server
 ENTRYPOINT ["/server"]
 ```
 
-**Important**: Research the current Go version and distroless image tags before writing the Dockerfile. Do not use versions from memory.
-
-## .golangci.yml
-
-Start with a minimal, opinionated configuration:
-```yaml
-run:
-  timeout: 5m
-
-linters:
-  enable:
-    - errcheck
-    - govet
-    - staticcheck
-    - unused
-    - gosimple
-    - ineffassign
-    - typecheck
-    - revive
-    - gocritic
-    - gofumpt
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        arguments:
-          - checkPrivateReceivers
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-```
-
-**Important**: Research the current golangci-lint configuration format before writing this file. Linter names and settings change between versions.
-
-## .gitignore
-
+### .gitignore Template
 ```
 bin/
 *.exe
@@ -151,52 +166,3 @@ bin/
 coverage.out
 vendor/
 ```
-
-## CI Pipeline (GitHub Actions)
-
-Create `.github/workflows/ci.yml`:
-```yaml
-name: CI
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@<current-sha>
-      - uses: actions/setup-go@<current-sha>
-        with:
-          go-version-file: go.mod
-      - run: go test -race ./...
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@<current-sha>
-      - uses: actions/setup-go@<current-sha>
-        with:
-          go-version-file: go.mod
-      - uses: golangci/golangci-lint-action@<current-sha>
-```
-
-**Important**: Research the current SHA-pinned versions of all GitHub Actions before writing the workflow. Do not use versions from memory.
-
-## Post-Scaffold Verification
-
-After scaffolding:
-1. `go build ./...` — must compile
-2. `go vet ./...` — must pass
-3. `go test ./...` — must pass (even if no tests yet)
-4. `make help` — must list all targets
-5. `docker build .` — must build successfully (if Dockerfile created)
-
-## Agent Coordination
-
-- **builder**: Executes the scaffolding
-- **ci-ops**: Should review the Dockerfile and CI pipeline
-- **docs-writer**: Should write the initial README
-- **code-reviewer**: Should review the final scaffold for consistency

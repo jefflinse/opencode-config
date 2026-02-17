@@ -48,7 +48,10 @@ Use this when preparing a tagged release of the project. This covers both regula
 4. Link to PRs and issues for each entry
 5. Include migration instructions for any breaking changes
 
+**Gate**: Present the changelog to the user for review before proceeding. The changelog will be included in the release, so it must be accurate.
+
 ### Phase 3: Pre-Release Checks
+**Agent**: builder
 
 Run the full verification suite:
 
@@ -60,15 +63,20 @@ Run the full verification suite:
 6. **Docker**: `docker build .` — image builds successfully (if applicable)
 7. **Integration tests**: Run if available
 
-All checks must pass. Do not release with known failures.
+Acceptance criteria: All checks pass. Do not proceed with any failures.
+
+**Gate**: If any check fails, present the failures to the user. Options: "Fix and re-run checks", "Abort release". Do not proceed with known failures.
 
 ### Phase 4: Version Bump
+**Agent**: builder
 
 Update version references in:
 - Source code version constants (if any)
 - README badges (if version is shown)
 - Makefile version defaults (if hardcoded)
 - Any version-stamped configuration
+
+Acceptance criteria: `go build ./...` still compiles after version changes.
 
 ### Phase 5: Tag and Release
 **Agent**: git-workflow
@@ -82,12 +90,13 @@ Update version references in:
    - Mark as pre-release if applicable
 
 ### Phase 6: Post-Release
+**Agent**: builder
 
 1. Verify CI/CD pipeline completed successfully for the tag
 2. Verify published artifacts are accessible (container images, binaries)
 3. If the project is a library, verify it's fetchable: `go get <module>@v1.2.0`
-4. Announce the release if applicable (team channel, mailing list)
-5. Create follow-up issues for any items deferred during release prep
+
+**Gate**: Present the release verification results to the user. Include any manual steps the user needs to take (announcing the release, notifying stakeholders). These are human actions that cannot be automated.
 
 ## Release Checklist (Quick Reference)
 

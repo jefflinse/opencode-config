@@ -110,7 +110,10 @@ Produce a prioritized list of refactoring opportunities with effort estimates (s
 - Are GitHub Actions pinned to SHAs?
 - Is test coverage tracked over time?
 
-## Output Format
+### 9. Compile Report
+**Agent**: code-reviewer
+
+Consolidate findings from all previous steps into a single prioritized report:
 
 ```markdown
 ## Codebase Health Report
@@ -137,6 +140,8 @@ Produce a prioritized list of refactoring opportunities with effort estimates (s
 ### Positive Observations
 - Things the codebase does well (acknowledge good patterns)
 ```
+
+**Gate**: Present the compiled report to the user. Options: "Accept report", "Investigate specific findings further", "Create action items from findings".
 
 ## Principles
 

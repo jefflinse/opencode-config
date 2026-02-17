@@ -49,32 +49,36 @@ Gather evidence from:
 - Infrastructure status (database connectivity, external service health)
 
 ### Phase 2: Mitigate
-**Agent**: ci-ops (for rollback), builder (for hotfix)
+**Agent**: ci-ops (Options A, B, D), builder (Option C)
 
-Choose the fastest path to restoration:
+Based on the assessment, choose the fastest path to restoration. The orchestrator should select the option and invoke the appropriate agent:
 
-#### Option A: Rollback (preferred if a recent deployment correlates with the incident)
+#### Option A: Rollback → invoke ci-ops
+Preferred if a recent deployment correlates with the incident.
 1. Identify the last known-good deployment
 2. Roll back to it: revert the deployment, redeploy the previous container image, or revert the Git commit
 3. Verify the service recovers
-4. If rollback doesn't resolve the issue, it wasn't the deployment — move to Option B or C
+4. If rollback doesn't resolve the issue, it wasn't the deployment — try another option
 
-#### Option B: Feature flag / circuit breaker
-1. If the failing functionality can be disabled without affecting the rest of the service, disable it
-2. This buys time for proper diagnosis without a full rollback
+#### Option B: Feature flag / circuit breaker → invoke ci-ops
+If the failing functionality can be disabled without affecting the rest of the service.
+1. Disable the failing feature via config change, feature flag, or environment variable
+2. Deploy the config change
+3. Verify the service stabilizes
 
-#### Option C: Hotfix
-1. Only if the fix is obvious, small, and can be deployed quickly
-2. The hotfix must be the minimal change that restores service — no cleanup, no refactoring
-3. Skip the full review process, but have at least one pair of eyes on the change
-4. Deploy through the normal pipeline if possible, or fast-track if necessary
+#### Option C: Hotfix → invoke builder
+Only if the fix is obvious, small, and can be deployed quickly.
+1. The hotfix must be the minimal change that restores service — no cleanup, no refactoring
+2. Skip the full review process, but invoke code-reviewer for a quick sanity check
+3. Deploy through the normal pipeline if possible, or fast-track if necessary
 
-#### Option D: Infrastructure mitigation
+#### Option D: Infrastructure mitigation → invoke ci-ops
+For resource or infrastructure issues.
 1. Scale up if the issue is resource exhaustion
 2. Restart pods/containers if the issue is a corrupted state
 3. Failover to secondary if the issue is infrastructure-specific
 
-**Gate**: Service must be restored (or actively recovering) before moving to Phase 3. If you cannot mitigate within 15 minutes, escalate.
+**Gate**: Service must be restored (or actively recovering) before moving to Phase 3. If mitigation has not succeeded within 15 minutes, escalate to the user with a status report and ask for direction.
 
 ### Phase 3: Diagnose
 **Agent**: debugger
@@ -113,20 +117,21 @@ Produce a diagnosis report:
 <duration, users affected, data implications>
 ```
 
+**Gate**: Present the diagnosis report to the user before proceeding to the fix phase. The root cause must be confirmed before a fix is implemented.
+
 ### Phase 4: Fix
 **Agents**: builder, test-writer
 
-If a rollback was the mitigation, a proper fix is still needed:
-
-1. Fix the root cause in the codebase (use the bug-triage skill process from here)
-2. Write a regression test that reproduces the incident condition
-3. Verify the fix against the specific data/load/timing conditions that caused the incident
+If a rollback was the mitigation, a proper fix is still needed. Follow the bug-triage skill's Phase 3-5 process:
+1. **builder**: Implement the minimal fix that addresses the root cause
+2. **test-writer**: Write a regression test that reproduces the incident condition (must fail without the fix, pass with it)
+3. **builder**: Verify the fix against the specific data/load/timing conditions that caused the incident
 4. Deploy the fix through the normal pipeline with full review
 
 If a hotfix was the mitigation:
-1. Review the hotfix properly (it was fast-tracked during the incident)
-2. If the hotfix is adequate as a permanent fix, add tests and close
-3. If the hotfix is a band-aid, implement a proper fix and remove the hotfix
+1. **code-reviewer**: Review the hotfix properly (it was fast-tracked during the incident)
+2. If the hotfix is adequate as a permanent fix, have **test-writer** add tests and close
+3. If the hotfix is a band-aid, have **builder** implement a proper fix and remove the hotfix
 
 ### Phase 5: Post-Incident Review
 **Agent**: planner (to structure follow-up work)

@@ -23,111 +23,103 @@ Use this when:
 4. **Zero-downtime**: Migrations must not lock tables for extended periods in production
 5. **Testability**: Migrations must be tested against production-like data volumes
 
-## Migration Safety Checklist
+## Workflow
 
-### Before Writing
+### Phase 1: Assess the Change
+**Agent**: db-architect
 
+1. Understand the current schema and all code that queries the affected tables
+2. Identify all services/applications that access the affected tables
+3. Determine if the migration needs to be backward compatible (yes if using rolling deploys)
+4. Classify the change type: adding columns, removing columns, renaming columns, modifying types, adding/modifying constraints, dropping tables, or data migration
+5. Estimate the migration duration against production data volume
+6. Determine the deployment strategy: simple migration (backward compatible) or expand-contract pattern (breaking changes)
+
+**Gate**: Present the assessment to the user. The change classification, backward compatibility requirement, and deployment strategy must be confirmed before writing the migration.
+
+### Phase 2: Write the Migration
+**Agent**: db-architect
+
+Write the migration following the safety rules for the specific change type:
+
+**Adding columns**: New column must be nullable OR have a default value. Use `CREATE INDEX CONCURRENTLY` for new indexes.
+
+**Removing columns**: Column must already be unreferenced by application code. Removal must be in a SEPARATE migration from the code change.
+
+**Renaming columns**: Do NOT rename in a single migration. Use the expand-contract pattern: add new column → backfill → switch reads → drop old column.
+
+**Modifying column types**: New type must be compatible with existing data. Verify no existing data will be truncated.
+
+**Adding/modifying constraints**: Existing data must satisfy the new constraint. Backfill NULL values before adding NOT NULL.
+
+**Dropping tables**: No application code or foreign keys reference the table. Data archived if needed.
+
+**Data migrations**: Separate from schema migrations. Idempotent. Batched for large tables.
+
+Every migration must include both `up` and `down`. The `down` must actually reverse the `up`.
+
+Acceptance criteria: Migration SQL is syntactically valid for the target database. Up and down are both present.
+
+### Phase 3: Write Application Code Changes
+**Agent**: builder
+
+If the migration requires application code changes:
+1. Update repository/store layer to work with the new schema
+2. If using expand-contract pattern: implement the dual-write logic for the transition period
+3. Handle `sql.ErrNoRows` and other query changes that result from the schema change
+4. Ensure the application code works with BOTH the old and new schema during the transition
+
+Acceptance criteria: `go build ./...` compiles, `go test ./...` passes.
+
+### Phase 4: Test the Migration
+**Agent**: builder
+
+1. Apply and rollback: Run `up` then `down` then `up` again — must succeed
+2. Verify the application works with the new schema: run `go test ./...`
+3. If the project has integration tests against a real database, run those
+4. Verify query plans haven't degraded: spot-check with `EXPLAIN ANALYZE` on key queries
+
+Acceptance criteria: Migration applies and rolls back cleanly. All tests pass.
+
+### Phase 5: Security Review
+**Agent**: security-auditor
+
+Review the migration for:
+1. Data exposure risks: does the migration create new columns that could leak sensitive data?
+2. Permission changes: does the migration alter access controls?
+3. Secrets: are there any hardcoded values, connection strings, or credentials in the migration?
+
+### Phase 6: Review
+**Agents**: code-reviewer, db-architect
+
+1. code-reviewer reviews the application code changes
+2. db-architect reviews the migration SQL for correctness, safety, and adherence to the checklist
+
+**Gate**: Present all findings. BLOCKING findings must be addressed before the migration is applied to any environment.
+
+### Phase 7: Document the Rollback Plan
+**Agent**: db-architect
+
+Produce a rollback plan:
 ```
-[ ] Understand the current schema and all code that queries the affected tables
-[ ] Identify all services/applications that access the affected tables
-[ ] Determine if the migration needs to be backward compatible (yes if using rolling deploys)
-[ ] Estimate the migration duration against production data volume
+- Down migration tested: yes/no
+- Rollback procedure: which migrations to reverse, in what order
+- Data loss from rollback: describe what would be lost
+- Rollback can be performed without downtime: yes/no
+- Estimated rollback time: <duration>
 ```
 
-### Adding Columns
+**Gate**: Present the rollback plan to the user. The user must acknowledge the rollback implications before the migration is committed.
 
-```
-[ ] New column is nullable OR has a default value (never add NOT NULL without default to existing table)
-[ ] Default value is appropriate and won't cause issues with existing rows
-[ ] If adding an index, use CREATE INDEX CONCURRENTLY (PostgreSQL) to avoid table lock
-[ ] Old application code won't break with the new column present
-```
+## Reference: Deployment Strategies
 
-### Removing Columns
+### Simple Migration (backward compatible)
+The new schema works with both old and new application code. Apply the migration, then deploy the new code. Rollback is straightforward: reverse the migration, redeploy old code.
 
-```
-[ ] Column is no longer referenced by any application code (deploy code change FIRST)
-[ ] Column removal is in a SEPARATE migration from the code change
-[ ] Data in the column has been preserved elsewhere if needed
-[ ] Down migration can recreate the column (nullable, as data is lost)
-```
-
-### Renaming Columns
-
-**Do not rename columns in a single migration.** Instead:
-1. Add the new column
-2. Deploy code that writes to both old and new columns
-3. Backfill the new column from the old column
-4. Deploy code that reads from the new column
-5. Remove the old column
-
-### Modifying Column Types
-
-```
-[ ] New type is compatible with existing data (e.g., VARCHAR(50) → VARCHAR(100) is safe; the reverse may not be)
-[ ] Application code handles both old and new types during transition
-[ ] If narrowing a type, verify no existing data will be truncated or rejected
-```
-
-### Adding/Modifying Constraints
-
-```
-[ ] Existing data satisfies the new constraint (run a validation query first)
-[ ] If adding NOT NULL, existing NULL values are handled (backfill first)
-[ ] Foreign key constraints won't cause cascading issues
-[ ] Check constraints are valid for all existing rows
-```
-
-### Dropping Tables
-
-```
-[ ] No application code references the table
-[ ] No foreign keys reference the table from other tables
-[ ] Data has been archived or migrated if needed
-[ ] Down migration can recreate the table structure (data loss is expected and documented)
-```
-
-### Data Migrations
-
-```
-[ ] Schema migration and data migration are SEPARATE files
-[ ] Data migration is idempotent (safe to run multiple times)
-[ ] Data migration handles NULL values and edge cases
-[ ] Data migration performance is tested against production-like data volume
-[ ] Data migration runs in batches for large tables (not one giant UPDATE)
-```
-
-## Deployment Strategy
-
-### Expand-Contract Pattern (Recommended for breaking changes)
-
+### Expand-Contract Pattern (breaking changes)
 1. **Expand**: Add new columns/tables, deploy code that writes to both old and new
 2. **Migrate**: Backfill new columns/tables from old data
 3. **Switch**: Deploy code that reads from new, writes to new only
 4. **Contract**: Remove old columns/tables
 
-This pattern ensures zero-downtime and backward compatibility at every step.
-
-### Rollback Plan
-
-For every migration, document:
-```
-[ ] Down migration tested and verified
-[ ] Rollback procedure documented (which migrations to reverse, in what order)
-[ ] Data loss from rollback is understood and acceptable
-[ ] Rollback can be performed without downtime
-```
-
-## Testing
-
-1. **Apply and rollback**: Run `up` then `down` then `up` again — must succeed
-2. **Test against production-like data**: Use a copy of production data (anonymized) to verify performance
-3. **Test with running application**: Apply the migration while the old version of the application is running — it must not break
-4. **Verify indexes**: After migration, verify query plans haven't degraded with `EXPLAIN ANALYZE`
-
-## Agent Coordination
-
-- **db-architect**: Writes the migration and reviews schema design
-- **builder**: Updates application code to work with the new schema
-- **security-auditor**: Reviews for data exposure risks in migration
-- **ci-ops**: Ensures migration runs in CI test pipeline
+Each step is a separate migration and deployment. This ensures zero-downtime and backward compatibility at every step.

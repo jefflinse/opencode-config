@@ -16,13 +16,20 @@ Use this when:
 
 ## Review Workflow
 
-### Phase 1: Understand the Change
+### Phase 1: Scope Assessment
+**Agent**: code-reviewer
 
-Before reviewing any code:
+Before detailed review:
 1. Read the PR description — understand *what* changed and *why*
 2. Read the linked issue or ticket for context
 3. Identify the scope: which packages, files, and systems are affected
 4. Determine the type of change: feature, bug fix, refactoring, dependency update, infrastructure
+5. Determine which specialist agents need to be involved based on what the PR touches:
+   - Goroutines, channels, mutexes, shared state → concurrency-reviewer
+   - User input handling, auth, crypto, HTTP headers → security-auditor
+   - Database queries, schema changes, migrations → db-architect
+   - New/modified API endpoints → api-designer
+   - Dockerfile, CI config, Makefile changes → ci-ops
 
 ### Phase 2: Full Diff Review
 **Agent**: code-reviewer
@@ -32,6 +39,7 @@ Review the entire diff, not just individual files:
 2. Check that the change is complete — no half-implemented features or TODO comments that should have been resolved
 3. Verify the change is minimal — no unrelated reformatting, refactoring, or "while I was here" changes mixed in
 4. Check for consistency with existing project conventions
+5. Apply AI-generated code scrutiny: check for hallucinated APIs, plausible but wrong logic, cargo-culted patterns, misleading test names, missing edge cases
 
 Focus areas:
 - Correctness: logic errors, nil safety, error handling
@@ -41,6 +49,7 @@ Focus areas:
 - Resource management: are files, connections, and goroutines properly cleaned up?
 
 ### Phase 3: Test Verification
+**Agent**: test-writer
 
 1. Are there tests for the new/changed behavior?
 2. Do the tests cover edge cases and error paths, not just the happy path?
@@ -49,31 +58,22 @@ Focus areas:
 5. For bug fixes: is there a regression test that would have caught the original bug?
 
 ### Phase 4: Specialist Reviews
+**Agents**: Invoke only the specialists identified in Phase 1.
 
-Engage specialist agents based on what the PR touches:
+For each applicable specialist, invoke them with the relevant file paths and a description of what the PR changes in their domain. Do not invoke specialists whose domain is not touched by the PR.
 
-| PR Contains | Agent | What They Check |
-|-------------|-------|-----------------|
-| Goroutines, channels, mutexes, shared state | concurrency-reviewer | Data races, deadlocks, goroutine leaks |
-| User input handling, auth, crypto, HTTP headers | security-auditor | Injection, auth bypass, secret exposure |
-| Database queries, schema changes, migrations | db-architect | Query safety, migration compatibility, N+1 queries |
-| New/modified API endpoints | api-designer | Contract consistency, backward compatibility |
-| Dockerfile, CI config, Makefile changes | ci-ops | Build correctness, image security, pipeline logic |
+| Domain | Agent |
+|--------|-------|
+| Concurrency | concurrency-reviewer |
+| Security | security-auditor |
+| Database | db-architect |
+| API contracts | api-designer |
+| Infrastructure | ci-ops |
 
-Only engage specialists relevant to the specific PR. Don't run every agent on every PR.
+### Phase 5: Compile Findings
+**Agent**: code-reviewer
 
-### Phase 5: AI-Code Awareness
-
-Since the code was likely AI-generated, apply extra scrutiny for:
-- **Hallucinated APIs**: Functions or methods that don't exist in the referenced library version
-- **Plausible but wrong logic**: Code that reads naturally but has subtle errors
-- **Cargo-culted patterns**: Abstractions or patterns that add complexity without value
-- **Misleading test names**: Test cases where the name describes one thing but the test verifies another
-- **Missing edge cases**: Happy path coverage without error path coverage
-
-### Phase 6: Compile Findings
-
-Consolidate all findings into a structured review:
+Consolidate all findings from Phases 2-4 into a single structured review:
 
 ```markdown
 ## Review Summary
@@ -105,6 +105,8 @@ Things that need clarification from the author:
 Things done well (acknowledge good work):
 1. <observation>
 ```
+
+**Gate**: Present the compiled review to the user. Options: "Post review as-is", "Adjust findings before posting", "Cancel review".
 
 ## Principles
 

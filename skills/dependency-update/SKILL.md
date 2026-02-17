@@ -29,7 +29,10 @@ Use this when:
    - **Patch**: Bug fixes — lowest risk
 4. Prioritize: security fixes first, then patches, then minors, then majors
 
+**Gate**: Present the categorized audit results to the user. Options: "Proceed with all updates", "Select specific updates to apply", "Abort". The user should confirm which updates to proceed with, especially for major version bumps.
+
 ### Phase 2: Update
+**Agent**: builder
 
 Handle each category differently:
 
@@ -61,6 +64,7 @@ go mod tidy
 - If exploitable, prioritize the major update; if not, document the risk and plan the major update separately
 
 ### Phase 3: Verify
+**Agent**: builder
 
 1. `go build ./...` — must compile
 2. `go vet ./...` — must pass

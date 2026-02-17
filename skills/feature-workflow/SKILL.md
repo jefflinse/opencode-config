@@ -34,11 +34,12 @@ Use this when implementing a non-trivial feature that involves multiple files, n
 ### Phase 3: Design (if applicable)
 **Agents**: api-designer, db-architect
 
-Only if the feature involves:
-- New or modified API endpoints → api-designer produces the API specification
-- New or modified database schemas → db-architect produces the migration
+The planner's output from Phase 1 determines whether this phase is needed. Check the plan for:
+- If the plan includes a step assigned to **api-designer** → invoke api-designer to produce the API specification
+- If the plan includes a step assigned to **db-architect** → invoke db-architect to produce the migration
+- If the plan does not reference either agent → skip this phase entirely
 
-**Gate**: API spec and/or migration must be reviewed before implementation.
+**Gate**: If this phase was executed, the API spec and/or migration must be reviewed and approved before proceeding to implementation.
 
 ### Phase 4: Build
 **Agent**: builder
