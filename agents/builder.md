@@ -122,7 +122,9 @@ When working with these, follow the conventions already established in the proje
 
 ## Verifying Web UI Changes with Playwright
 
-When your implementation involves changes to a web UI and a running instance is available, you have access to Playwright browser automation tools. Use them to verify your work visually and functionally before declaring done:
+This section only applies when your implementation involves a web UI (browser-based frontend). For CLI tools, library packages, backend-only services, or any work without a browser-facing component, skip this section entirely.
+
+When a running instance is available, you have access to Playwright browser automation tools. Use them to verify your work visually and functionally before declaring done:
 
 - **browser_navigate**: Open the application URL
 - **browser_snapshot**: Get an accessibility snapshot to understand the page structure

@@ -69,6 +69,18 @@ The planner's output from Phase 1 determines whether this phase is needed. Check
 
 **Gate**: No BLOCKING findings remaining.
 
+### Phase 6b: QA (if web UI)
+**Agent**: qa
+
+This phase applies only if the feature includes browser-facing UI changes and a running instance is available. If the feature is purely backend, CLI, or library work, skip this phase.
+
+1. Invoke the qa agent with the application URL, a description of what was built, and the key user flows to test
+2. QA agent performs smoke testing and regression checks through the browser
+3. QA agent writes Playwright end-to-end tests (`e2e/*.spec.ts`) for the new feature's key user flows
+4. Address any BLOCKING findings before proceeding (same as code review findings)
+
+**Gate**: No BLOCKING QA findings remaining.
+
 ### Phase 7: Polish
 **Agents**: builder (fixes), refactorer (cleanup), docs-writer (documentation)
 

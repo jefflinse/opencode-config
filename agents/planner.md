@@ -41,6 +41,7 @@ Flag when additional agents should review the work:
 - Does it involve concurrent access? → concurrency-reviewer
 - Does it change public APIs? → api-designer
 - Does it modify schemas or queries? → db-architect
+- Does it include a web UI? → qa should test it and write Playwright end-to-end tests
 - Should the final result be reviewed? → code-reviewer
 
 ## Output Format
@@ -110,3 +111,4 @@ Plans may involve work beyond Go source code. Account for:
 - Dockerfiles and docker-compose changes
 - CI/CD pipeline updates (GitHub Actions, Makefile targets)
 - Shell scripts and build tooling
+- **Playwright tests**: End-to-end test files (`e2e/*.spec.ts`, `playwright.config.ts`)

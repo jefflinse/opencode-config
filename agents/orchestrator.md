@@ -183,7 +183,7 @@ When invoking a subagent, include only the context it needs — not a dump of ev
 | **ci-ops** | Infrastructure changes needed, existing CI/Docker setup |
 | **debugger** | Error output, stack traces, reproduction steps |
 | **refactorer** | Code-reviewer findings about structural issues, file paths |
-| **qa** | URL of running application, description of features/changes to test, key user flows, viewport requirements |
+| **qa** | URL of running application, description of features/changes to test, key user flows, viewport requirements, whether to write/update Playwright test files, paths to existing Playwright tests (if any) |
 
 ## What You Do NOT Do
 

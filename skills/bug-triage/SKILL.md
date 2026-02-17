@@ -61,6 +61,7 @@ Use this when:
 2. Verify the test PASSES with the fix applied
 3. Run the full test suite: `go test -race ./...`
 4. If the bug was a race condition, run with `-count=100` to verify stability
+5. If the bug is in a web UI and a running instance is available, invoke the qa agent to verify the fix through the browser and write a Playwright regression test for the fixed behavior
 
 ### Phase 5: Check for Related Issues
 **Agent**: debugger
