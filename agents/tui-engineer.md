@@ -175,6 +175,164 @@ var (
 - Receiver names: short (1-2 letters), consistent within a type
 - Package names: short, lowercase, singular
 
+## LLM API Integration in TUI
+
+TUI applications that interface with LLMs have specific architectural patterns. The core challenge is feeding streaming API responses into Bubble Tea's message-based architecture without blocking the UI.
+
+### Streaming Response Pattern
+
+LLM APIs return responses as a stream of tokens. In Bubble Tea, this maps to a `tea.Cmd` that reads from the stream and emits incremental `tea.Msg` values:
+
+```go
+// Message types for streaming
+type StreamChunkMsg struct {
+    Content string // Incremental text content (one or more tokens)
+}
+type StreamDoneMsg struct{}
+type StreamErrMsg struct {
+    Err error
+}
+
+// Command that reads one chunk from the stream and returns the next command
+func readStream(reader io.Reader, scanner *bufio.Scanner) tea.Cmd {
+    return func() tea.Msg {
+        if scanner.Scan() {
+            line := scanner.Text()
+            // Parse SSE or JSON line — implementation depends on the provider
+            content := parseLine(line)
+            return StreamChunkMsg{Content: content}
+        }
+        if err := scanner.Err(); err != nil {
+            return StreamErrMsg{Err: err}
+        }
+        return StreamDoneMsg{}
+    }
+}
+```
+
+In the `Update` function, chain the commands so each chunk triggers reading the next:
+
+```go
+case StreamChunkMsg:
+    m.content += msg.Content
+    m.viewport.SetContent(m.content)
+    return m, readStream(m.reader, m.scanner) // Read next chunk
+case StreamDoneMsg:
+    m.streaming = false
+    return m, nil // Stop reading
+case StreamErrMsg:
+    m.err = msg.Err
+    m.streaming = false
+    return m, nil
+```
+
+Key points:
+- Each `tea.Cmd` reads exactly one chunk, then returns. Never loop inside a `tea.Cmd` — that blocks the UI
+- Chain commands: the `Update` handler for `StreamChunkMsg` returns another `readStream` command to get the next chunk
+- The `View` function renders whatever content has accumulated so far — it's called after every `Update`, so the UI updates incrementally as tokens arrive
+- Use a `viewport.Model` to display streaming content — it handles scrolling automatically
+
+### Cancellation
+
+Users expect to be able to cancel a streaming response (typically `Esc`). This requires:
+
+```go
+// Use a context for cancellation
+type Model struct {
+    cancel context.CancelFunc
+    // ...
+}
+
+// When starting a stream
+ctx, cancel := context.WithCancel(context.Background())
+m.cancel = cancel
+req, _ := http.NewRequestWithContext(ctx, "POST", url, body)
+
+// When user presses Esc during streaming
+case tea.KeyMsg:
+    if msg.String() == "esc" && m.streaming {
+        m.cancel() // Cancels the HTTP request
+        m.streaming = false
+    }
+```
+
+### SSE (Server-Sent Events) Parsing
+
+Most LLM APIs (OpenAI, Anthropic) use SSE format for streaming. The response is a stream of lines:
+```
+data: {"content": "Hello"}
+data: {"content": " world"}
+data: [DONE]
+```
+
+Parse this with a line scanner. Key details:
+- Lines starting with `data: ` contain the payload
+- `data: [DONE]` signals end of stream (OpenAI convention)
+- Empty lines separate events — skip them
+- Set the request header: `Accept: text/event-stream`
+- The HTTP response comes back immediately with status 200; the body streams incrementally
+
+### Provider Client Structure
+
+For prototypes, a minimal client interface is sufficient:
+
+```go
+type Client struct {
+    httpClient *http.Client
+    apiKey     string
+    baseURL    string
+}
+
+type Message struct {
+    Role    string // "user", "assistant", "system"
+    Content string
+}
+
+// For non-streaming: simple request/response
+func (c *Client) Complete(ctx context.Context, messages []Message) (string, error)
+
+// For streaming: returns a reader the TUI can consume incrementally
+func (c *Client) StreamComplete(ctx context.Context, messages []Message) (io.ReadCloser, error)
+```
+
+Don't over-abstract for a prototype:
+- Support one provider at a time (OpenAI or Anthropic, not both behind an interface)
+- Hardcode the model name or accept it as a simple string parameter
+- Read the API key from an environment variable (`os.Getenv`)
+- Use `net/http` directly — don't pull in a provider SDK unless the project already uses one
+
+### Token and Context Management
+
+For prototypes, keep token management simple:
+- Track conversation history as a `[]Message` slice on the model
+- Be aware of context window limits but don't build elaborate token counting — for a prototype, truncate from the front if the conversation gets long
+- If token counting matters for the prototype's purpose, use a rough heuristic (4 characters ≈ 1 token for English text) rather than importing a tokenizer library
+
+### TUI Layout for Chat-Style Interfaces
+
+A common TUI+LLM pattern is a chat interface. Typical layout:
+
+```
+┌─────────────────────────────┐
+│  Conversation history       │  ← viewport.Model (scrollable)
+│  ...                        │
+│  User: hello                │
+│  Assistant: Hi! How can...  │
+│                             │
+├─────────────────────────────┤
+│  > Type your message...     │  ← textarea.Model or textinput.Model
+├─────────────────────────────┤
+│  model: gpt-4 | tokens: 42 │  ← status bar (Lipgloss styled)
+└─────────────────────────────┘
+```
+
+Implementation notes:
+- Use `viewport.Model` for the conversation history — it handles scrolling
+- Use `textarea.Model` for multi-line input or `textinput.Model` for single-line
+- Auto-scroll the viewport to the bottom as streaming content arrives: `m.viewport.GotoBottom()`
+- Show a spinner in the status bar while waiting for / receiving a response
+- Display the streaming response in-place — append to the last message, don't create a new line per token
+
 ## Handoff Signals
 
 Flag when other agents should be involved:
