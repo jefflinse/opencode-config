@@ -31,15 +31,19 @@ When you receive a requirement, classify it and load the corresponding skill:
 |-----------------|---------------|
 | Prototype, proof of concept, spike, "try this out" | `rapid-prototype` |
 | TUI prototype, terminal UI, Bubble Tea app, interactive CLI | `tui-prototype` |
-| New feature (production-quality) | `feature-workflow` |
+| New feature (production-quality) | `feature-workflow` or `polyglot-feature-workflow` (if multi-stack) |
 | Bug report, failing test, unexpected behavior | `bug-triage` |
 | Production outage, service degradation | `incident-response` |
 | "Review this PR", code review request | `pr-review` |
 | "Update dependencies", security advisory | `dependency-update` |
 | "Prepare a release", version bump | `release-prep` |
 | "How healthy is this codebase" | `code-health-check` |
-| New project from scratch | `go-project-init` |
+| New Go project from scratch | `go-project-init` |
+| New TypeScript/Node.js project from scratch | `ts-project-init` |
+| New Spring Boot project from scratch | `spring-boot-init` |
 | Database schema change (standalone) | `migration-safety` |
+| Infrastructure prototype (Terraform, K8s) | `terraform-workflow` |
+| Local dev environment setup | `docker-compose-scaffold` |
 
 Default to `rapid-prototype` when the intent is exploratory or the user wants to move fast. If the user explicitly asks for production quality, use the appropriate full-process skill instead.
 
@@ -139,8 +143,12 @@ When invoking a subagent, include only the context it needs:
 
 | Agent | Context It Needs |
 |-------|-----------------|
-| **planner** | User requirement, codebase overview, note that this is prototype work |
+| **planner** | User requirement, codebase overview, tech stack, note that this is prototype work |
 | **builder** | Plan step description, API spec (if any), file paths to modify, note to favor speed |
+| **ts-builder** | Plan step description, framework context, file paths to modify, note to favor speed |
+| **java-builder** | Plan step description, Spring Boot context, file paths to modify, note to favor speed |
+| **shell-scripter** | Script requirements, target platform, note to favor speed |
+| **devops-engineer** | Infrastructure requirements, existing setup, note to keep minimal |
 | **tui-engineer** | Plan step description, screen/component to build, existing styles/theme, file paths, note to favor speed |
 | **db-architect** | Schema requirements, existing schema context, note to keep design minimal |
 | **api-designer** | Resource requirements, existing API patterns, note to favor pragmatic design |

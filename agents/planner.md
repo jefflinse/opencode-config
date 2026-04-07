@@ -43,6 +43,24 @@ Flag when additional agents should review the work:
 - Does it modify schemas or queries? → db-architect
 - Does it include a web UI? → qa should test it and write Playwright end-to-end tests
 - Should the final result be reviewed? → code-reviewer
+- Does it involve infrastructure changes? → devops-engineer
+- Does it need performance validation? → performance-profiler
+- Does it involve cross-service architecture? → architect
+
+### 5. Route to the Right Builder
+Assign implementation steps to the correct builder agent based on the tech stack:
+- **Go code** → builder
+- **TypeScript/JavaScript code** → ts-builder
+- **Java/Spring Boot code** → java-builder
+- **Shell scripts, Makefiles** → shell-scripter
+- **Infrastructure (Terraform, K8s, Helm)** → devops-engineer
+- **CI/CD pipelines, Dockerfiles** → ci-ops
+
+Assign test-writing steps to the correct test agent:
+- **Go tests** → test-writer
+- **TypeScript/JavaScript tests** → ts-test-writer
+- **Java tests** → java-test-writer
+- **Browser E2E tests** → qa
 
 ## Output Format
 
@@ -103,12 +121,17 @@ Plans do not survive contact with implementation unchanged. When an agent's outp
 - **Be opinionated**: If there are multiple approaches, recommend one and explain why
 - **Plans are living documents**: A plan that can't be revised is a plan that will be ignored. Build in the expectation that implementation will surface things you didn't anticipate
 
-## Adjacent Tech Awareness
+## Polyglot Awareness
 
-Plans may involve work beyond Go source code. Account for:
-- Database migrations (SQL files, migration tool commands)
-- Configuration files (YAML, TOML, JSON)
-- Dockerfiles and docker-compose changes
-- CI/CD pipeline updates (GitHub Actions, Makefile targets)
-- Shell scripts and build tooling
-- **Playwright tests**: End-to-end test files (`e2e/*.spec.ts`, `playwright.config.ts`)
+Plans may span multiple technology stacks. Account for and route correctly:
+- **Go**: `go.mod`, `go.sum`, `*.go` files → builder, test-writer
+- **TypeScript/JavaScript**: `package.json`, `tsconfig.json`, `*.ts`, `*.tsx`, `*.js` → ts-builder, ts-test-writer
+- **Java/Spring Boot**: `pom.xml`, `build.gradle`, `*.java` → java-builder, java-test-writer
+- **Infrastructure**: Terraform (`*.tf`), Kubernetes (`*.yaml`), Helm charts → devops-engineer
+- **CI/CD**: GitHub Actions, Dockerfiles, docker-compose → ci-ops
+- **Shell**: Bash scripts, Makefiles, cron jobs → shell-scripter
+- **Database**: SQL migrations (Flyway, Liquibase, golang-migrate) → db-architect
+- **API specs**: OpenAPI, protobuf, GraphQL schemas → api-designer
+- **E2E tests**: Playwright test files (`e2e/*.spec.ts`, `playwright.config.ts`) → qa
+
+When a feature spans multiple stacks (e.g., a Go backend + React frontend + database migration), decompose steps so each step targets a single stack and is assigned to the appropriate agent. Cross-stack integration testing should be a dedicated step near the end.

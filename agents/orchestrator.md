@@ -30,15 +30,25 @@ When you receive a requirement, classify it and load the corresponding skill:
 
 | Requirement Type | Skill to Load |
 |-----------------|---------------|
-| New feature, new capability, new endpoint | `feature-workflow` |
+| New feature, new capability, new endpoint | `feature-workflow` or `polyglot-feature-workflow` (if multi-stack) |
 | Bug report, failing test, unexpected behavior | `bug-triage` |
 | Production outage, service degradation | `incident-response` |
 | "Review this PR", code review request | `pr-review` |
 | "Update dependencies", security advisory | `dependency-update` |
 | "Prepare a release", version bump | `release-prep` |
 | "How healthy is this codebase" | `code-health-check` |
-| New project from scratch | `go-project-init` |
+| New Go project from scratch | `go-project-init` |
+| New TypeScript/Node.js project from scratch | `ts-project-init` |
+| New Spring Boot project from scratch | `spring-boot-init` |
 | Database schema change (standalone) | `migration-safety` |
+| Refactoring, code cleanup, pattern migration | `refactoring-workflow` |
+| Performance investigation or optimization | `performance-audit` |
+| Technical debt assessment or reduction | `tech-debt-sprint` |
+| API versioning, migration between versions | `api-migration` |
+| Infrastructure setup (Terraform, K8s) | `terraform-workflow` |
+| Local dev environment, docker-compose setup | `docker-compose-scaffold` |
+| Production log/trace analysis | `log-analysis` |
+| New team member needs codebase overview | `onboarding-guide` |
 
 If the requirement doesn't fit a skill, fall back to: invoke the planner, get a plan, execute it step by step.
 
@@ -170,14 +180,25 @@ When invoking a subagent, include only the context it needs — not a dump of ev
 
 | Agent | Context It Needs |
 |-------|-----------------|
-| **planner** | User requirement, codebase overview |
+| **planner** | User requirement, codebase overview, tech stack(s) involved |
 | **builder** | Plan step description, API spec (if any), migration (if any), file paths to modify |
-| **test-writer** | File paths of code to test, plan step acceptance criteria |
-| **code-reviewer** | File paths of all changed files, description of what changed and why |
-| **security-auditor** | File paths of security-relevant changes, description of user-facing functionality |
+| **ts-builder** | Plan step description, framework/library context, file paths to modify, `package.json` details |
+| **java-builder** | Plan step description, Spring Boot version, file paths to modify, `pom.xml`/`build.gradle` details |
+| **test-writer** | File paths of Go code to test, plan step acceptance criteria |
+| **ts-test-writer** | File paths of TS/JS code to test, test framework (Jest/Vitest), acceptance criteria |
+| **java-test-writer** | File paths of Java code to test, Spring Boot version, acceptance criteria |
+| **code-reviewer** | File paths of all changed files, description of what changed and why, language(s) involved |
+| **security-auditor** | File paths of security-relevant changes, description of user-facing functionality, stack context |
 | **concurrency-reviewer** | File paths of concurrent code, description of concurrency patterns used |
 | **db-architect** | Schema requirements, existing schema context |
 | **api-designer** | Resource requirements, existing API patterns |
+| **architect** | System-level requirements, service boundaries, quality attributes, scale requirements |
+| **devops-engineer** | Infrastructure requirements, cloud provider, existing IaC, deployment strategy |
+| **performance-profiler** | Performance symptoms, affected endpoints/services, current metrics, profiling data |
+| **tech-debt-analyst** | Scope of assessment, specific areas of concern, business context |
+| **migration-planner** | Current state, target state, constraints, consumer list |
+| **shell-scripter** | Script requirements, target platforms, existing scripts to match |
+| **log-analyst** | Symptoms, time range, affected services, available observability data |
 | **git-workflow** | All changed files, plan summary, review findings addressed |
 | **docs-writer** | Changed public behavior, file paths, API changes |
 | **ci-ops** | Infrastructure changes needed, existing CI/Docker setup |
